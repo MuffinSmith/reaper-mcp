@@ -4,7 +4,7 @@
 -- - All DSL (Domain Specific Language) functions for natural language control
 -- Profile selection is handled by the Python MCP server, not this bridge
 
-local BRIDGE_VERSION = "1.7.5"
+local BRIDGE_VERSION = "1.7.6"
 
 local bridge_dir = reaper.GetResourcePath() .. '/Scripts/mcp_bridge_data/'
 
@@ -1228,10 +1228,67 @@ local function GetBridgeVersion()
     return {ok = true, version = BRIDGE_VERSION}
 end
 
+local function audio_input_name(index)
+    local name = reaper.GetInputChannelName(index)
+    if name and name ~= "" then return name end
+    return "Input " .. tostring(index + 1)
+end
+
+local function describe_record_input(value)
+    value = math.floor(value)
+    if value < 0 then return {input_index = value, mode = "none", name = "No input"} end
+    if value >= 4096 then
+        return {input_index = value, mode = "midi", name = "MIDI input"}
+    end
+    if value >= 2048 then
+        return {input_index = value, mode = "multichannel", name = "Multichannel input"}
+    end
+    local stereo = value >= 1024
+    local start = stereo and value - 1024 or value
+    local left = audio_input_name(start)
+    if stereo then
+        local right = audio_input_name(start + 1)
+        return {input_index = value, mode = "stereo", name = left .. " / " .. right,
+                channels = as_array({left, right})}
+    end
+    return {input_index = value, mode = "mono", name = left, channels = as_array({left})}
+end
+
+local function GetAudioInputs()
+    local count = reaper.GetNumAudioInputs()
+    local mono, stereo = {}, {}
+    for i = 0, count - 1 do
+        table.insert(mono, describe_record_input(i))
+        if i + 1 < count then
+            table.insert(stereo, describe_record_input(1024 + i))
+        end
+    end
+    return {ok = true, input_count = count, mono = as_array(mono), stereo = as_array(stereo)}
+end
+
+local function GetTrackRecordInput(track_index)
+    local track = reaper.GetTrack(0, track_index)
+    if not track then return {ok = false, error = "Track not found at index " .. tostring(track_index)} end
+    local info = describe_record_input(reaper.GetMediaTrackInfo_Value(track, "I_RECINPUT"))
+    info.ok = true
+    info.track_index = track_index
+    return info
+end
+
+local function SetTrackRecordInput(track_index, input_index)
+    local track = reaper.GetTrack(0, track_index)
+    if not track then return {ok = false, error = "Track not found at index " .. tostring(track_index)} end
+    reaper.SetMediaTrackInfo_Value(track, "I_RECINPUT", input_index)
+    return GetTrackRecordInput(track_index)
+end
+
 -- Export function table for DSL
 DSL_FUNCTIONS = {
     -- Bridge metadata
     GetBridgeVersion = GetBridgeVersion,
+    GetAudioInputs = GetAudioInputs,
+    GetTrackRecordInput = GetTrackRecordInput,
+    SetTrackRecordInput = SetTrackRecordInput,
 
     -- Track info
     GetTrackInfo = GetTrackInfo,

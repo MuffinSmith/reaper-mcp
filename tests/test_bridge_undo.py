@@ -16,6 +16,12 @@ BRIDGE = Path(__file__).resolve().parent.parent / "reaper_mcp_bridge.lua"
 STUB = """
 undo_log = {}
 written = {}
+track_input = 1030
+input_names = {
+    "AG08 Streaming L", "AG08 Streaming R", "AG08 Voice L", "AG08 Voice R",
+    "AG08 AUX L", "AG08 AUX R", "AG08 CH1", "AG08 CH2", "AG08 CH3",
+    "AG08 CH4", "AG08 CH5", "AG08 CH6", "AG08 CH7", "AG08 CH8",
+}
 reaper = {
     GetResourcePath = function() return RESOURCE end,
     RecursiveCreateDirectory = function() return 1 end,
@@ -27,6 +33,16 @@ reaper = {
         undo_log[#undo_log + 1] = "end:" .. tostring(label) .. ":" .. tostring(flags)
     end,
     CountTracks = function() return 2 end,
+    GetNumAudioInputs = function() return #input_names end,
+    GetInputChannelName = function(index) return input_names[index + 1] end,
+    GetTrack = function(_, index) if index == 0 then return {} end end,
+    GetMediaTrackInfo_Value = function(_, key)
+        if key == "I_RECINPUT" then return track_input end
+    end,
+    SetMediaTrackInfo_Value = function(_, key, value)
+        if key == "I_RECINPUT" then track_input = value end
+        return true
+    end,
     InsertTrackAtIndex = function(idx, defaults)
         if idx == 99 then error("boom") end
         written[#written + 1] = "insert:" .. tostring(idx)
@@ -138,3 +154,24 @@ def test_the_next_request_after_a_raise_is_not_inside_a_stale_block(bridge):
 def test_an_empty_label_opens_no_block(bridge):
     bridge({"func": "StubWrite", "args": ["a"], "id": "x", "undo": ""})
     assert bridge.undo_log() == []
+
+
+def test_named_audio_inputs_include_the_stereo_index_to_use(bridge):
+    response = bridge({"func": "GetAudioInputs", "args": [], "id": "inputs"})
+    assert response["ok"] is True
+    assert response["input_count"] == 14
+    assert response["stereo"][12] == {
+        "input_index": 1036, "mode": "stereo", "name": "AG08 CH7 / AG08 CH8",
+        "channels": ["AG08 CH7", "AG08 CH8"],
+    }
+
+
+def test_setting_record_input_returns_the_resolved_name(bridge):
+    before = bridge({"func": "GetTrackRecordInput", "args": [0], "id": "before"})
+    assert before["name"] == "AG08 CH1 / AG08 CH2"
+    after = bridge({"func": "SetTrackRecordInput", "args": [0, 1036], "id": "set",
+                    "undo": "MCP: set track input"})
+    assert after["ok"] is True
+    assert after["input_index"] == 1036
+    assert after["name"] == "AG08 CH7 / AG08 CH8"
+    assert bridge.undo_log() == ["begin", "end:MCP: set track input:-1"]

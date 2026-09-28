@@ -5,6 +5,18 @@ All notable changes to TwelveTake REAPER MCP are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.6] - 2026-09-27
+
+**The bridge changed. Redeploy `reaper_mcp_bridge.lua`** with
+`twelvetake-reaper-mcp --install-bridge`, then re-run it in REAPER.
+
+### Added
+- `get_audio_inputs` lists the active device's named mono inputs and adjacent stereo
+  pairs with the exact indexes accepted by `set_track_input`.
+- `get_track_record_input` reads back a track's selected input by name. Setting an
+  input now returns the resolved name too, so a wrong channel mapping is visible
+  immediately without opening REAPER's input menu.
+
 ## [1.7.5] - 2026-09-24
 
 **The bridge changed. Redeploy `reaper_mcp_bridge.lua`** (`twelvetake-reaper-mcp

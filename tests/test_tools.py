@@ -62,6 +62,15 @@ def test_set_track_mute_bool_to_int(reaper):
     assert reaper.last == ("SetMediaTrackInfo_Value", [2, "B_MUTE", 0])
 
 
+def test_audio_input_tools_use_named_bridge_handlers(reaper):
+    run(srv.get_audio_inputs())
+    assert reaper.last == ("GetAudioInputs", [])
+    run(srv.get_track_record_input(1))
+    assert reaper.last == ("GetTrackRecordInput", [1])
+    run(srv.set_track_input(1, 1036))
+    assert reaper.last == ("SetTrackRecordInput", [1, 1036])
+
+
 def test_set_track_volume_db_conversion(reaper):
     run(srv.set_track_volume(0, -6.0))
     func, args = reaper.last

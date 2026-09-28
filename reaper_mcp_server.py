@@ -12,7 +12,7 @@ License: MIT
 Version: 1.6.5
 """
 
-__version__ = "1.7.5"
+__version__ = "1.7.6"
 
 import os
 import asyncio
@@ -119,7 +119,7 @@ BRIDGE_DIR_PROBLEM = bridge_dir_problem(BRIDGE_DIR)
 # The bridge script version this server needs. REAPER runs whatever copy is deployed in
 # its Scripts folder, deployed by hand, so the halves drift. Anything older cannot answer
 # GetBridgeVersion and is reported as out of date instead of failing in obscure ways.
-MIN_BRIDGE_VERSION = "1.7.5"
+MIN_BRIDGE_VERSION = "1.7.6"
 
 # How long to wait for the bridge to answer. Configurable because the bridge answers
 # only after the work finishes and renders run at roughly realtime, so 5s reports a
@@ -184,6 +184,8 @@ CONVENTIONS (apply to every tool unless its own description says otherwise):
   "MCP: <tool name>", so undo() reverses one tool call at a time; get_undo_state shows
   whether the next step is yours or the user's. Transport, view,
   selection, run_action and project open/save/render are not undo steps.
+- For a named hardware recording input, call get_audio_inputs first and pass its
+  input_index to set_track_input. The setter returns the selected channel name.
 
 IMPORTANT: The REAPER bridge script must be running in REAPER for tools to work. If a tool returns a timeout error, ensure:
 1. REAPER is running
@@ -3296,13 +3298,26 @@ async def arm_track(track_index: int, arm: bool = True) -> dict:
 @mcp.tool(annotations=ToolAnnotations(destructiveHint=False))
 async def set_track_input(track_index: int, input_index: int) -> dict:
     """
-    Set the record input for a track.
+    Set the record input for a track and return its resolved channel name.
 
     Args:
-        input_index: Input index (-1=no input, 0+=hardware inputs, 4096+=virtual MIDI).
+        input_index: Use get_audio_inputs for named mono/stereo hardware choices;
+            -1=no input, 4096+=MIDI.
 
     """
-    return await reaper_call("SetMediaTrackInfo_Value", track_index, "I_RECINPUT", input_index)
+    return await reaper_call("SetTrackRecordInput", track_index, input_index)
+
+
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+async def get_audio_inputs() -> dict:
+    """List active device inputs by name, with the exact input_index for each mono and stereo choice."""
+    return await reaper_call("GetAudioInputs")
+
+
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+async def get_track_record_input(track_index: int) -> dict:
+    """Read a track's record input index, mode, and resolved channel name."""
+    return await reaper_call("GetTrackRecordInput", track_index)
 
 
 @mcp.tool(annotations=ToolAnnotations(destructiveHint=False))

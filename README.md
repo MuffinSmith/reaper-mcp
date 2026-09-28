@@ -10,7 +10,7 @@ A [TwelveTake Studios](https://twelvetake.com) project.
 
 A comprehensive Model Context Protocol (MCP) server that enables AI assistants to control REAPER DAW for mixing, mastering, MIDI composition, and full music production workflows.
 
-**Version:** 1.7.5
+**Version:** 1.7.6
 
 ## Why This Server
 
@@ -273,7 +273,9 @@ ever reached REAPER. `REAPER_COMM_MODE` no longer does anything.
 | `set_track_master_send(index, enabled)` | Enable/disable master send |
 | `set_track_as_folder(index, depth)` | Set as folder parent/child |
 | `arm_track(index, arm)` | Arm for recording |
-| `set_track_input(index, input)` | Set record input |
+| `get_audio_inputs()` | List named mono and stereo inputs with their input indexes |
+| `get_track_record_input(index)` | Read a track's selected input by name |
+| `set_track_input(index, input)` | Set record input and return its resolved name |
 | `set_track_monitor(index, mode)` | Set monitor mode |
 
 ### FX Operations (16 tools)
